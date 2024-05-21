@@ -1,0 +1,34 @@
+{{- if and .Values.persistence.enabled (not .Values.persistence.imgWiki.existingClaim) }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ printf "%s-img-wiki" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "tiki.labels" . | nindent 4 }}
+  {{- with .Values.persistence.imgWiki.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+  {{- if not (empty .Values.persistence.imgWiki.accessModes) }}
+  {{- range .Values.persistence.imgWiki.accessModes }}
+    - {{ . | quote }}
+  {{- end }}
+  {{- else }}
+    - {{ .Values.persistence.imgWiki.accessMode | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.imgWiki.size | quote }}
+  {{- if .Values.persistence.imgWiki.storageClass }}
+  storageClass: {{- .Values.persistence.imgWiki.storageClass }}
+  {{- end -}}
+  {{- if .Values.persistence.imgWiki.selector }}
+  selector: {{- .Values.persistence.imgWiki.selector | nindent 4 }}
+  {{- end -}}
+  {{- if .Values.persistence.imgWiki.dataSource }}
+  dataSource: {{- .Values.persistence.imgWiki.dataSource | nindent 4 }}
+  {{- end }}
+{{- end }}

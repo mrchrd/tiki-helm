@@ -1,0 +1,34 @@
+{{- if and .Values.persistence.enabled (not .Values.persistence.temp.existingClaim) }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ printf "%s-temp" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "tiki.labels" . | nindent 4 }}
+  {{- with .Values.persistence.temp.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+  {{- if not (empty .Values.persistence.temp.accessModes) }}
+  {{- range .Values.persistence.temp.accessModes }}
+    - {{ . | quote }}
+  {{- end }}
+  {{- else }}
+    - {{ .Values.persistence.temp.accessMode | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.temp.size | quote }}
+  {{- if .Values.persistence.temp.storageClass }}
+  storageClass: {{- .Values.persistence.temp.storageClass }}
+  {{- end -}}
+  {{- if .Values.persistence.temp.selector }}
+  selector: {{- .Values.persistence.temp.selector | nindent 4 }}
+  {{- end -}}
+  {{- if .Values.persistence.temp.dataSource }}
+  dataSource: {{- .Values.persistence.temp.dataSource | nindent 4 }}
+  {{- end }}
+{{- end }}

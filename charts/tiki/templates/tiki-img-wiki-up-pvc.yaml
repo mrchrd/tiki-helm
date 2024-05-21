@@ -1,0 +1,34 @@
+{{- if and .Values.persistence.enabled (not .Values.persistence.imgWikiUp.existingClaim) }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ printf "%s-img-wiki-up" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "tiki.labels" . | nindent 4 }}
+  {{- with .Values.persistence.imgWikiUp.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+  {{- if not (empty .Values.persistence.imgWikiUp.accessModes) }}
+  {{- range .Values.persistence.imgWikiUp.accessModes }}
+    - {{ . | quote }}
+  {{- end }}
+  {{- else }}
+    - {{ .Values.persistence.imgWikiUp.accessMode | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.imgWikiUp.size | quote }}
+  {{- if .Values.persistence.imgWikiUp.storageClass }}
+  storageClass: {{- .Values.persistence.imgWikiUp.storageClass }}
+  {{- end -}}
+  {{- if .Values.persistence.imgWikiUp.selector }}
+  selector: {{- .Values.persistence.imgWikiUp.selector | nindent 4 }}
+  {{- end -}}
+  {{- if .Values.persistence.imgWikiUp.dataSource }}
+  dataSource: {{- .Values.persistence.imgWikiUp.dataSource | nindent 4 }}
+  {{- end }}
+{{- end }}

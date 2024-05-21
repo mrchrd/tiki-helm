@@ -1,0 +1,34 @@
+{{- if and .Values.persistence.enabled (not .Values.persistence.sessions.existingClaim) }}
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ printf "%s-sessions" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "tiki.labels" . | nindent 4 }}
+  {{- with .Values.persistence.sessions.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+  {{- if not (empty .Values.persistence.sessions.accessModes) }}
+  {{- range .Values.persistence.sessions.accessModes }}
+    - {{ . | quote }}
+  {{- end }}
+  {{- else }}
+    - {{ .Values.persistence.sessions.accessMode | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.sessions.size | quote }}
+  {{- if .Values.persistence.sessions.storageClass }}
+  storageClass: {{- .Values.persistence.sessions.storageClass }}
+  {{- end -}}
+  {{- if .Values.persistence.sessions.selector }}
+  selector: {{- .Values.persistence.sessions.selector | nindent 4 }}
+  {{- end -}}
+  {{- if .Values.persistence.sessions.dataSource }}
+  dataSource: {{- .Values.persistence.sessions.dataSource | nindent 4 }}
+  {{- end }}
+{{- end }}

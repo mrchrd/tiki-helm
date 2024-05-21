@@ -1,0 +1,74 @@
+## Reference: https://github.com/helm/chart-releaser-action
+name: Chart Publish
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "charts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    if: github.repository == 'mrchrd/tiki-helm'
+    permissions:
+      contents: write  # for helm/chart-releaser-action to push chart release and create a release
+      packages: write  # to push OCI chart package to GitHub Registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.10.1
+
+      - name: Configure Git
+        run: |
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      # The GitHub repository secret `PGP_PRIVATE_KEY` contains the private key
+      # in ASCII-armored format. To export a (new) key, run this command:
+      # `gpg --armor --export-secret-key <my key>`
+      #- name: Prepare PGP key
+      #  run: |
+      #    IFS=""
+      #    echo "$PGP_PRIVATE_KEY" | gpg --dearmor > $HOME/secring.gpg
+      #    echo "$PGP_PASSPHRASE" > $HOME/passphrase.txt
+      #
+      #    # Tell chart-releaser-action where to find the key and its passphrase
+      #    echo "CR_KEYRING=$HOME/secring.gpg" >> "$GITHUB_ENV"
+      #    echo "CR_PASSPHRASE_FILE=$HOME/passphrase.txt" >> "$GITHUB_ENV"
+      #  env:
+      #    PGP_PRIVATE_KEY: "${{ secrets.PGP_PRIVATE_KEY }}"
+      #    PGP_PASSPHRASE: "${{ secrets.PGP_PASSPHRASE }}"
+
+      - name: Run chart-releaser
+        uses: helm/chart-releaser-action@v1
+        with:
+          config: "./.github/configs/cr.yaml"
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push chart to GHCR
+        run: |
+          shopt -s nullglob
+          for pkg in .cr-release-packages/*.tgz; do
+            if [ -z "${pkg:-}" ]; then
+              break
+            fi
+            helm push "${pkg}" oci://ghcr.io/${{ github.repository }}
+          done

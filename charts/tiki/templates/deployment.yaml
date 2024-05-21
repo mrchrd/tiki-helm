@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "tiki.fullname" . }}
+  labels:
+    {{- include "tiki.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tiki.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "tiki.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "tiki.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: TIKI_DB_HOST
+              value: {{ include "tiki.databaseHost" . | quote }}
+            - name: TIKI_DB_NAME
+              value: {{ include "tiki.databaseName" . | quote }}
+            - name: TIKI_DB_USER
+              value: {{ include "tiki.databaseUser" . | quote }}
+            - name: TIKI_DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "tiki.databaseSecretName" . }}
+                  key: mariadb-password
+          volumeMounts:
+            - name: tiki-files
+              mountPath: /var/www/html/files
+            - name: tiki-img-trackers
+              mountPath: /var/www/html/img/trackers
+            - name: tiki-img-wiki-up
+              mountPath: /var/www/html/img/wiki_up
+            - name: tiki-img-wiki
+              mountPath: /var/www/html/img/wiki
+            - name: tiki-modules-cache
+              mountPath: /var/www/html/modules/cache
+            - name: tiki-storage
+              mountPath: /var/www/html/storage
+            - name: tiki-temp
+              mountPath: /var/www/html/temp
+            - name: tiki-sessions
+              mountPath: /var/www/sessions
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tiki-files
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.files.existingClaim }}{{ .Values.persistence.files.existingClaim }}{{- else }}{{ printf "%s-files" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}{{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tiki-img-trackers
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.imgTrackers.existingClaim }}{{ .Values.persistence.imgTrackers.existingClaim }}{{- else }}{{ printf "%s-img-trackers" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}{{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tiki-img-wiki-up
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.imgWikiUp.existingClaim }}{{ .Values.persistence.imgWikiUp.existingClaim }}{{- else }}{{ printf "%s-img-wiki-up" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}{{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tiki-img-wiki
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.imgWiki.existingClaim }}{{ .Values.persistence.imgWiki.existingClaim }}{{- else }}{{ printf "%s-img-wiki" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}{{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tiki-modules-cache
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.modulesCache.existingClaim }}{{ .Values.persistence.modulesCache.existingClaim }}{{- else }}{{ printf "%s-modules-cache" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}{{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tiki-storage
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.storage.existingClaim }}{{ .Values.persistence.storage.existingClaim }}{{- else }}{{ printf "%s-storage" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}{{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tiki-temp
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.temp.existingClaim }}{{ .Values.persistence.temp.existingClaim }}{{- else }}{{ printf "%s-temp" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}{{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: tiki-sessions
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ if .Values.persistence.sessions.existingClaim }}{{ .Values.persistence.sessions.existingClaim }}{{- else }}{{ printf "%s-sessions" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" }}{{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
