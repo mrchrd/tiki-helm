@@ -61,20 +61,12 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
-{{- define "tiki.mariadb.fullname" -}}
-{{- printf "%s-mariadb" (include "tiki.fullname" .) | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
 {{/*
 Return the MariaDB Hostname
 */}}
 {{- define "tiki.databaseHost" -}}
 {{- if .Values.mariadb.enabled }}
-    {{- if eq .Values.mariadb.architecture "replication" }}
-        {{- printf "%s-primary" (include "tiki.mariadb.fullname" .) | trunc 63 | trimSuffix "-" -}}
-    {{- else -}}
-        {{- printf "%s" (include "tiki.mariadb.fullname" .) -}}
-    {{- end -}}
+    {{- printf "%s" (include "mariadb.primary.fullname" .Subcharts.mariadb) -}}
 {{- else -}}
     {{- printf "%s" .Values.externalDatabase.host -}}
 {{- end -}}
@@ -118,11 +110,7 @@ Return the MariaDB Secret Name
 */}}
 {{- define "tiki.databaseSecretName" -}}
 {{- if .Values.mariadb.enabled }}
-    {{- if .Values.mariadb.auth.existingSecret -}}
-        {{- printf "%s" .Values.mariadb.auth.existingSecret -}}
-    {{- else -}}
-        {{- printf "%s" (include "tiki.mariadb.fullname" .) -}}
-    {{- end -}}
+    {{- printf "%s" (include "mariadb.secretName" .Subcharts.mariadb) -}}
 {{- else if .Values.externalDatabase.existingSecret -}}
     {{- print "%s" .Values.externalDatabase.existingSecret -}}
 {{- else -}}
